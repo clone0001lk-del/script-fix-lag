@@ -1,5 +1,5 @@
 --[[
-    Blox Fruits Ultimate Optimizer UI + Bảng tên Dương Hưng Đẹp Trai
+    Blox Fruits Ultimate Optimizer UI + Xóa Hiệu Ứng Chiêu Thức + Bảng Tên Dương Hưng Đẹp Trai
 ]]--
 
 if not game:IsLoaded() then game.Loaded:Wait() end
@@ -23,8 +23,8 @@ ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 -- Khung chính
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 320, 0, 480)
-MainFrame.Position = UDim2.new(0.5, -160, 0.5, -240)
+MainFrame.Size = UDim2.new(0, 320, 0, 530) -- Tăng thêm chiều cao để chứa nút mới
+MainFrame.Position = UDim2.new(0.5, -160, 0.5, -265)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -47,7 +47,6 @@ local NameTagCorner = Instance.new("UICorner")
 NameTagCorner.CornerRadius = UDim.new(0, 8)
 NameTagCorner.Parent = NameTagFrame
 
--- Viền sáng nhẹ cho bảng tên
 local NameTagStroke = Instance.new("UIStroke")
 NameTagStroke.Color = Color3.fromRGB(0, 255, 128)
 NameTagStroke.Thickness = 1.5
@@ -63,7 +62,6 @@ NameTagText.Text = "✨ DƯƠNG HƯNG ĐẸP TRAI ✨"
 NameTagText.Parent = NameTagFrame
 -- =======================================================================
 
--- Tiêu đề phụ nhỏ bên dưới bảng tên
 local SubTitle = Instance.new("TextLabel")
 SubTitle.Size = UDim2.new(1, 0, 0, 20)
 SubTitle.Position = UDim2.new(0, 0, 0, 68)
@@ -74,7 +72,6 @@ SubTitle.Font = Enum.Font.GothamMedium
 SubTitle.Text = "Blox Fruits Ultimate Optimizer"
 SubTitle.Parent = MainFrame
 
--- Container chứa các nút bấm (đặt ở vị trí thấp hơn)
 local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = MainFrame
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -85,7 +82,6 @@ local Padding = Instance.new("UIPadding")
 Padding.PaddingTop = UDim.new(0, 95)
 Padding.Parent = MainFrame
 
--- Hàm tạo nút bấm chuẩn
 local function createButton(name, text, order, callback)
     local btn = Instance.new("TextButton")
     btn.Name = name
@@ -115,8 +111,11 @@ local function createButton(name, text, order, callback)
     return btn
 end
 
--- Tạo các nút tính năng
-createButton("ExtremeBoost", "🚀 Bật Tối Ưu RAM / Xóa Hiệu Ứng", 1, function(state)
+-- Trạng thái xóa hiệu ứng chiêu thức
+local removeSkillEffects = false
+
+-- 1. Tối ưu RAM tổng quan
+createButton("ExtremeBoost", "🚀 Bật Tối Ưu RAM / Đồ Họa", 1, function(state)
     settings().Rendering.QualityLevel = state and Enum.QualityLevel.Level01 or Enum.QualityLevel.Automatic
     Lighting.GlobalShadows = not state
     if state then
@@ -126,6 +125,7 @@ createButton("ExtremeBoost", "🚀 Bật Tối Ưu RAM / Xóa Hiệu Ứng", 1, 
     end
 end)
 
+-- 2. Chuyển Map Xám
 createButton("GrayMap", "🌫️ Chuyển Map Sang Màu Xám", 2, function(state)
     if state then
         for _, v in pairs(Workspace:GetDescendants()) do
@@ -134,7 +134,40 @@ createButton("GrayMap", "🌫️ Chuyển Map Sang Màu Xám", 2, function(state
     end
 end)
 
-createButton("HidePlayers", "👤 Ẩn Người Chơi Khác", 3, function(state)
+-- 3. Xóa Hiệu Ứng Chiêu Thức (Mới thêm)
+createButton("RemoveSkills", "⚔️ Xóa Hiệu Ứng Chiêu Thức", 3, function(state)
+    removeSkillEffects = state
+    
+    local function cleanEffect(v)
+        if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Highlight") then
+            v:Destroy()
+        -- Ẩn các khối cầu/hiệu ứng kỹ năng phát sáng phụ trợ bay ra khi gồng chiêu
+        elseif v:IsA("BasePart") and (v.Name:lower():find("effect") or v.Name:lower():find("hitbox") or v.Name:lower():find("skill")) then
+            v:Destroy()
+        end
+    end
+
+    -- Quét toàn bộ map hiện tại
+    if state then
+        for _, v in pairs(Workspace:GetDescendants()) do
+            cleanEffect(v)
+        end
+    end
+
+    -- Lắng nghe khi có chiêu thức mới tung ra thì xóa ngay lập tức
+    Workspace.DescendantAdded:Connect(function(v)
+        if removeSkillEffects then
+            task.spawn(function()
+                pcall(function()
+                    cleanEffect(v)
+                end)
+            end)
+        end
+    end)
+end)
+
+-- 4. Ẩn Người Chơi Khác
+createButton("HidePlayers", "👤 Ẩn Người Chơi Khác", 4, function(state)
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character then
             for _, part in pairs(p.Character:GetDescendants()) do if part:IsA("BasePart") then part.Transparency = state and 1 or 0 end end
@@ -142,7 +175,8 @@ createButton("HidePlayers", "👤 Ẩn Người Chơi Khác", 3, function(state)
     end
 end)
 
-createButton("HideDamage", "💥 Tắt Hiển Thị Sát Thương", 4, function(state)
+-- 5. Tắt Hiển Thị Sát Thương
+createButton("HideDamage", "💥 Tắt Hiển Thị Sát Thương", 5, function(state)
     for _, v in pairs(Workspace:GetDescendants()) do
         if v:IsA("BillboardGui") and (v.Name:lower():find("damage") or v.Name:lower():find("popup")) then v.Enabled = not state end
     end
@@ -161,4 +195,4 @@ ToggleBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible 
 end)
 
-print("✅ Đã load Menu thành công - Chào Bạn!")
+print("✅ Đã load Menu - Chào Ku!")
