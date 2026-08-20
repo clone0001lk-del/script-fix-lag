@@ -1,9 +1,3 @@
---==================================================
--- AGGRESSIVE LOW MEMORY MODE
--- LocalScript
--- StarterPlayer > StarterPlayerScripts
---==================================================
-
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
