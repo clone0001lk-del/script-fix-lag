@@ -1,26 +1,17 @@
---==================================================
--- ULTRA LOW-END FPS MODE
--- LocalScript
--- StarterPlayer > StarterPlayerScripts
---==================================================
-
 local Players = game:GetService("Players")
-local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
-local UserInputService = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
 
 local player = Players.LocalPlayer
-
 local enabled = false
-local connection
 
---==================================================
--- VISUAL OPTIMIZER
---==================================================
+--========================================
+-- OPTIMIZE OBJECT
+--========================================
 
 local function optimize(obj)
 
-	-- VFX
+	-- Tắt hiệu ứng
 	if obj:IsA("ParticleEmitter")
 		or obj:IsA("Trail")
 		or obj:IsA("Beam")
@@ -30,270 +21,138 @@ local function optimize(obj)
 		or obj:IsA("Highlight") then
 
 		obj.Enabled = false
-		return
 	end
 
-	-- LIGHT
+	-- Tắt đèn
 	if obj:IsA("PointLight")
 		or obj:IsA("SpotLight")
 		or obj:IsA("SurfaceLight") then
 
 		obj.Enabled = false
-		return
 	end
 
-	-- TEXTURE
+	-- Tắt texture
 	if obj:IsA("Decal")
 		or obj:IsA("Texture") then
 
 		obj.Transparency = 1
-		return
 	end
 
-	-- SURFACE APPEARANCE
-	if obj:IsA("SurfaceAppearance") then
-
-		obj:Destroy()
-		return
-	end
-
-	-- 3D OBJECT
+	-- Giảm shadow
 	if obj:IsA("BasePart") then
 
 		obj.CastShadow = false
 		obj.Reflectance = 0
+
+		-- Chuyển thành material nhẹ
 		obj.Material = Enum.Material.SmoothPlastic
-		obj.Color = Color3.fromRGB(100,100,100)
-
+		obj.Color = Color3.fromRGB(110,110,110)
 	end
 end
 
---==================================================
--- ANIMATION
---==================================================
+--========================================
+-- ENABLE
+--========================================
 
-local function stopAnimation(model)
+local function enable()
 
-	local humanoid =
-		model:FindFirstChildOfClass("Humanoid")
+	enabled = true
 
-	if not humanoid then
-		return
-	end
-
-	local animator =
-		humanoid:FindFirstChildOfClass("Animator")
-
-	if not animator then
-		return
-	end
-
-	for _, track in ipairs(
-		animator:GetPlayingAnimationTracks()
-	) do
-
-		pcall(function()
-			track:Stop(0)
-		end)
-
-	end
-end
-
---==================================================
--- LIGHTING
---==================================================
-
-local function optimizeLighting()
-
+	-- Lighting
 	pcall(function()
 		Lighting.GlobalShadows = false
 	end)
 
-	for _, obj in ipairs(Lighting:GetDescendants()) do
-
-		if obj:IsA("PostEffect")
-			or obj:IsA("Atmosphere") then
-
-			obj.Enabled = false
-
-		else
-			optimize(obj)
-		end
-	end
-end
-
---==================================================
--- TERRAIN
---==================================================
-
-local function optimizeTerrain()
-
-	local terrain =
-		Workspace:FindFirstChildOfClass("Terrain")
-
-	if not terrain then
-		return
-	end
-
-	pcall(function()
-		terrain.WaterWaveSize = 0
-		terrain.WaterWaveSpeed = 0
-		terrain.WaterReflectance = 0
-		terrain.WaterTransparency = 1
-	end)
-end
-
---==================================================
--- INITIAL CLEAN
---==================================================
-
-local function initialClean()
-
-	optimizeLighting()
-	optimizeTerrain()
-
-	-- Chỉ chạy 1 lần
+	-- Map hiện tại
 	for _, obj in ipairs(Workspace:GetDescendants()) do
 
 		if not enabled then
 			break
 		end
 
-		optimize(obj)
-
-		if obj:IsA("Humanoid") then
-
-			local model = obj.Parent
-
-			if model then
-				stopAnimation(model)
-			end
-		end
-	end
-end
-
---==================================================
--- ENABLE
---==================================================
-
-local function enable()
-
-	enabled = true
-
-	initialClean()
-
-	-- Không quét Workspace liên tục.
-	-- Chỉ xử lý object mới.
-	connection =
-		Workspace.DescendantAdded:Connect(function(obj)
-
-			if not enabled then
-				return
-			end
-
-			task.defer(function()
-
-				if not enabled then
-					return
-				end
-
-				if obj.Parent then
-
-					optimize(obj)
-
-					if obj:IsA("Humanoid") then
-						stopAnimation(obj.Parent)
-					end
-				end
-			end)
+		pcall(function()
+			optimize(obj)
 		end)
-end
-
---==================================================
--- DISABLE
---==================================================
-
-local function disable()
-
-	enabled = false
-
-	if connection then
-		connection:Disconnect()
-		connection = nil
 	end
+
+	print("[FPS] ENABLED")
 end
 
---==================================================
+--========================================
+-- NEW OBJECT
+--========================================
+
+Workspace.DescendantAdded:Connect(function(obj)
+
+	if not enabled then
+		return
+	end
+
+	task.defer(function()
+
+		if enabled and obj.Parent then
+			pcall(function()
+				optimize(obj)
+			end)
+		end
+
+	end)
+end)
+
+--========================================
 -- GUI
---==================================================
+--========================================
 
 local gui = Instance.new("ScreenGui")
-
-gui.Name = "UltraFPS"
+gui.Name = "FPSFix"
 gui.ResetOnSpawn = false
-gui.DisplayOrder = 999999
+gui.IgnoreGuiInset = true
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local button = Instance.new("TextButton")
 
-button.Size = UDim2.fromOffset(52,19)
+button.Size = UDim2.fromOffset(55,20)
+button.Position = UDim2.new(0.5,-27,0,3)
 
-button.AnchorPoint =
-	Vector2.new(0.5,0)
-
-button.Position =
-	UDim2.new(0.5,0,0,3)
-
-button.BackgroundColor3 =
-	Color3.fromRGB(40,40,40)
-
-button.BackgroundTransparency = 0.15
-
+button.BackgroundColor3 = Color3.fromRGB(45,45,45)
+button.BackgroundTransparency = 0.1
 button.BorderSizePixel = 0
 
 button.Text = "FPS"
-
-button.TextColor3 =
-	Color3.fromRGB(255,255,255)
-
-button.TextSize = 8
-
-button.Font =
-	Enum.Font.GothamBold
+button.TextColor3 = Color3.new(1,1,1)
+button.TextSize = 9
+button.Font = Enum.Font.GothamBold
 
 button.Parent = gui
 
-local corner =
-	Instance.new("UICorner")
-
-corner.CornerRadius =
-	UDim.new(0,4)
-
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0,4)
 corner.Parent = button
 
---==================================================
+--========================================
 -- TOGGLE
---==================================================
+--========================================
 
 button.Activated:Connect(function()
 
+	enabled = not enabled
+
 	if enabled then
 
-		disable()
-
-		button.Text = "FPS"
-
+		button.Text = "FPS ✓"
 		button.BackgroundColor3 =
-			Color3.fromRGB(40,40,40)
-
-	else
+			Color3.fromRGB(30,130,50)
 
 		enable()
 
-		button.Text = "FPS ✓"
+	else
 
+		button.Text = "FPS"
 		button.BackgroundColor3 =
-			Color3.fromRGB(30,120,50)
+			Color3.fromRGB(45,45,45)
 
+		print("[FPS] DISABLED")
 	end
 end)
+
+print("[FPS] SCRIPT LOADED")
